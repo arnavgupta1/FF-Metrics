@@ -9,7 +9,7 @@ export interface SleeperLeague {
 }
 
 export interface SleeperRoster {
-  roster_id: number;
+  roster_id: string;
   owner_id: string;
   players: string[];
   taxi: string[];
@@ -70,6 +70,7 @@ export interface SleeperPlayer {
   injury_start_date: string | null;
   practice_participation: string | null;
   sport: string;
+  points?: number; // Optional points field for calculated values
 }
 
 export interface SleeperMatchup {

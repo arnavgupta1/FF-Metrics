@@ -9,6 +9,12 @@ import {
   PowerRanking
 } from '@/types';
 import { FantasyAnalytics } from './calculations';
+import { 
+  filterMatchupsForRoster, 
+  getTeamPointsFromMatchup, 
+  getOpponentPointsFromMatchup,
+  isRosterInMatchup 
+} from '@/lib/utils/rosterUtils';
 
 export class DataProcessor {
   /**
@@ -33,9 +39,7 @@ export class DataProcessor {
       if (!user) return;
 
       // Safety check: if no matchups, set all matchup-dependent values to 0
-      const teamMatchups = matchups && matchups.length > 0 ? matchups.flat().filter(m => 
-        m.roster_id === roster.roster_id || m.opponent_roster_id === roster.roster_id
-      ) : [];
+      const teamMatchups = matchups && matchups.length > 0 ? filterMatchupsForRoster(matchups.flat(), roster.roster_id) : [];
 
       const wins = this.calculateWins(roster.roster_id, teamMatchups);
       const losses = teamMatchups.length - wins;
@@ -182,7 +186,7 @@ export class DataProcessor {
 
     matchups.forEach((weekMatchups, weekIndex) => {
       const teamMatchup = weekMatchups.find(m => 
-        m.roster_id === roster.roster_id || m.opponent_roster_id === roster.roster_id
+        isRosterInMatchup(m, roster.roster_id)
       );
       
       if (teamMatchup) {
@@ -214,11 +218,11 @@ export class DataProcessor {
     const sortedPlayers = availablePlayers.sort((a, b) => (b.points || 0) - (a.points || 0));
     
     let optimalPoints = 0;
-    let usedPositions = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, FLEX: 0 };
+    let usedPositions: Record<string, number> = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, FLEX: 0 };
 
     sortedPlayers.forEach(player => {
       const pos = player.position;
-      if (usedPositions[pos] < positionLimits[pos]) {
+      if (pos in usedPositions && usedPositions[pos] < (positionLimits[pos as keyof typeof positionLimits] || 0)) {
         optimalPoints += player.points || 0;
         usedPositions[pos]++;
       } else if (usedPositions.FLEX < positionLimits.FLEX && ['RB', 'WR', 'TE'].includes(pos)) {
@@ -249,15 +253,11 @@ export class DataProcessor {
 
     recentWeeks.forEach(weekMatchups => {
       const teamMatchup = weekMatchups.find(m => 
-        m.roster_id === rosterId || m.opponent_roster_id === rosterId
+        isRosterInMatchup(m, rosterId)
       );
       
       if (teamMatchup) {
-        if (teamMatchup.roster_id === rosterId) {
-          totalPoints += teamMatchup.points;
-        } else {
-          totalPoints += teamMatchup.opponent_points;
-        }
+        totalPoints += getTeamPointsFromMatchup(teamMatchup, rosterId);
         weeksWithData++;
       }
     });
@@ -282,10 +282,9 @@ export class DataProcessor {
     let selfInflictedLosses = 0;
 
     matchups.forEach(matchup => {
-      if (matchup.roster_id === rosterId || matchup.opponent_roster_id === rosterId) {
-        const isHomeTeam = matchup.roster_id === rosterId;
-        const teamPoints = isHomeTeam ? matchup.points : matchup.opponent_points;
-        const opponentPoints = isHomeTeam ? matchup.opponent_points : matchup.points;
+      if (isRosterInMatchup(matchup, rosterId)) {
+        const teamPoints = getTeamPointsFromMatchup(matchup, rosterId);
+        const opponentPoints = getOpponentPointsFromMatchup(matchup, rosterId);
         
         // Calculate projected points for this team
         const projectedPoints = this.calculateProjectedPoints(rosterId, matchup, projections);
@@ -315,10 +314,9 @@ export class DataProcessor {
     let potentialWins = 0;
 
     matchups.forEach(matchup => {
-      if (matchup.roster_id === rosterId || matchup.opponent_roster_id === rosterId) {
-        const isHomeTeam = matchup.roster_id === rosterId;
-        const teamPoints = isHomeTeam ? matchup.points : matchup.opponent_points;
-        const opponentPoints = isHomeTeam ? matchup.opponent_points : matchup.points;
+      if (isRosterInMatchup(matchup, rosterId)) {
+        const teamPoints = getTeamPointsFromMatchup(matchup, rosterId);
+        const opponentPoints = getOpponentPointsFromMatchup(matchup, rosterId);
         
         // Calculate optimal lineup points for this team
         const optimalPoints = this.calculateOptimalPointsForMatchup(rosterId, matchup, players);
@@ -442,12 +440,13 @@ export class DataProcessor {
     }
 
     return matchups.filter(m => {
-      if (m.roster_id === rosterId) {
-        return m.points > m.opponent_points;
-      } else if (m.opponent_roster_id === rosterId) {
-        return m.opponent_points > m.points;
+      if (!isRosterInMatchup(m, rosterId)) {
+        return false;
       }
-      return false;
+      
+      const teamPoints = getTeamPointsFromMatchup(m, rosterId);
+      const opponentPoints = getOpponentPointsFromMatchup(m, rosterId);
+      return teamPoints > opponentPoints;
     }).length;
   }
 
@@ -458,10 +457,8 @@ export class DataProcessor {
     }
 
     return matchups.reduce((total, m) => {
-      if (m.roster_id === rosterId) {
-        return total + m.points;
-      } else if (m.opponent_roster_id === rosterId) {
-        return total + m.opponent_points;
+      if (isRosterInMatchup(m, rosterId)) {
+        return total + getTeamPointsFromMatchup(m, rosterId);
       }
       return total;
     }, 0);
@@ -474,10 +471,8 @@ export class DataProcessor {
     }
 
     return matchups.reduce((total, m) => {
-      if (m.roster_id === rosterId) {
-        return total + m.opponent_points;
-      } else if (m.opponent_roster_id === rosterId) {
-        return total + m.points;
+      if (isRosterInMatchup(m, rosterId)) {
+        return total + getOpponentPointsFromMatchup(m, rosterId);
       }
       return total;
     }, 0);
