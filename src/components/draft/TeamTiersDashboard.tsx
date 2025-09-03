@@ -127,9 +127,9 @@ export function TeamTiersDashboard({ leagueId, draftAnalysisData }: TeamTiersDas
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">{draftAnalysisData.leagueName} - Team Tiers</h1>
+          <h1 className="text-2xl font-bold text-white">{draftAnalysisData.leagueName} - Team Expert Rankings</h1>
           <p className="text-gray-300 mt-1">
-            Position group analysis based on draft tiers
+            Position group analysis based on expert consensus rankings
           </p>
         </div>
       </div>
@@ -185,9 +185,9 @@ export function TeamTiersDashboard({ leagueId, draftAnalysisData }: TeamTiersDas
         {viewMode === 'combined' && (
           <div className="bg-gray-800 rounded-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-700">
-              <h3 className="text-lg font-medium text-white">Team Rankings by Overall Tier Score</h3>
+              <h3 className="text-lg font-medium text-white">Team Rankings by Overall Expert Rank Score</h3>
               <p className="text-sm text-gray-300 mt-1">
-                Lower scores indicate better overall roster construction
+                Lower scores indicate better overall roster construction (weighted: RB/WR 2.0x, QB/TE 1.5x, DEF 0.8x, K 0.5x)
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -201,7 +201,7 @@ export function TeamTiersDashboard({ leagueId, draftAnalysisData }: TeamTiersDas
                       Team
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Overall Score
+                      Expert Rank Score
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       QB
@@ -246,13 +246,13 @@ export function TeamTiersDashboard({ leagueId, draftAnalysisData }: TeamTiersDas
                         const positionData = team.positionTiers[position];
                         return (
                           <td key={position} className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                            {positionData ? (
+                            {positionData && positionData.averageTier > 0 ? (
                               <div className="text-center">
                                 <div className="font-medium">{positionData.averageTier.toFixed(1)}</div>
                                 <div className="text-xs text-gray-400">({positionData.totalPlayers})</div>
                               </div>
                             ) : (
-                              <span className="text-gray-500">-</span>
+                              <span className="text-gray-500">N/A</span>
                             )}
                           </td>
                         );

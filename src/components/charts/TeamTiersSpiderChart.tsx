@@ -42,16 +42,27 @@ export const TeamTiersSpiderChart: React.FC<TeamTiersSpiderChartProps> = ({
     teams.forEach((team, index) => {
       if (selectedTeams.includes(team.teamName)) {
         const positionData = team.positionTiers[position];
-        if (positionData && positionData.totalPlayers > 0) {
-          // Convert tier to numeric value (lower tier number = better)
-          // Reverse the scale: lower tiers (better players) = higher values (longer stems)
-          const tierValue = Math.max(1, Math.min(10, Math.round(positionData.averageTier || 10)));
-          const reversedValue = 11 - tierValue; // Reverse: tier 1 becomes 10, tier 10 becomes 1
-          dataPoint[team.teamName] = reversedValue;
-          console.log(`Chart data: ${team.teamName} ${position} = ${reversedValue} (from avgTier: ${positionData.averageTier}, reversed)`);
+        if (positionData && positionData.totalPlayers > 0 && positionData.averageTier > 0) {
+          // Invert expert rank so lower ranks (better players) get longer stems
+          // Expert rank 1 (best) should be at outer edge (30), expert rank 30 (worst) should be at inner edge (1)
+          // Hard code Green Bay Packers DEF ranking to 13
+          let expertRank = positionData.averageTier;
+          if (position === 'DEF' && positionData.players.some(player => player.playerName === 'Green Bay Packers')) {
+            expertRank = 13;
+          }
+          
+          // Adjust axis scaling for RB and WR to start at 10 instead of 0/1
+          let adjustedRank = expertRank;
+          if (position === 'RB' || position === 'WR') {
+            adjustedRank = expertRank - 5;
+          }
+          
+          const invertedValue = 31 - adjustedRank; // Invert: rank 1 becomes 30, rank 30 becomes 1
+          dataPoint[team.teamName] = invertedValue;
+          console.log(`Chart data: ${team.teamName} ${position} = ${invertedValue} (from expert rank: ${expertRank}, adjusted: ${adjustedRank})`);
         } else {
-          // No players at this position - use min value (shortest stem)
-          dataPoint[team.teamName] = 1;
+          // No players at this position or no valid expert rank - use 0 to maintain line connections
+          dataPoint[team.teamName] = 0;
         }
       }
     });
@@ -82,15 +93,15 @@ export const TeamTiersSpiderChart: React.FC<TeamTiersSpiderChartProps> = ({
                   ></div>
                   <span className="text-white font-medium">{team.teamName}</span>
                   <span className="text-gray-400 ml-2">
-                    (Tier: {positionData.averageTier.toFixed(1)})
+                    (Expert Rank: {positionData.averageTier.toFixed(1)})
                   </span>
                 </div>
                 <div className="ml-5 text-sm">
                   {positionData.players.slice(0, 3).map((player, playerIndex) => (
                     <div key={playerIndex} className="text-gray-300">
                       • {player.playerName}
-                      {player.tier !== 'N/A' && (
-                        <span className="text-gray-500 ml-1">({player.tier})</span>
+                      {player.expertRank > 0 && (
+                        <span className="text-gray-500 ml-1">(Rank: {player.expertRank})</span>
                       )}
                     </div>
                   ))}
@@ -112,7 +123,7 @@ export const TeamTiersSpiderChart: React.FC<TeamTiersSpiderChartProps> = ({
   return (
     <div className="bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-700">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-medium text-white">Team Position Tiers</h3>
+        <h3 className="text-lg font-medium text-white">Team Position Expert Rankings</h3>
         <div className="flex items-center gap-3">
           <button
             onClick={onToggleAllTeams}
@@ -157,9 +168,9 @@ export const TeamTiersSpiderChart: React.FC<TeamTiersSpiderChartProps> = ({
             />
             <PolarRadiusAxis 
               angle={90} 
-              domain={[1, 10]} 
-              tick={{ fill: '#9ca3af', fontSize: 10 }}
-              tickCount={5}
+              domain={[1, 30]} 
+              tick={false}
+              tickCount={6}
             />
             <Tooltip content={<CustomTooltip />} />
             {visibleTeams.map((team, index) => (
@@ -183,9 +194,6 @@ export const TeamTiersSpiderChart: React.FC<TeamTiersSpiderChartProps> = ({
 
       <div className="mt-4 text-sm text-gray-300">
         <p className="text-center">
-          <span className="text-yellow-400">Longer stems = Better players</span>
-        </p>
-        <p className="text-center mt-1">
           Click team names above to toggle visibility
         </p>
       </div>

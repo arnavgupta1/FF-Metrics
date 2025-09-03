@@ -185,123 +185,111 @@ export async function POST(request: NextRequest) {
           const rosterPlayers = positionPicks.filter(p => p.pickNumber === 0);
           console.log(`${teamName} ${position}: ${draftPicks.length} draft picks, ${rosterPlayers.length} roster players`);
           
-          // Debug: Show individual player tiers for this position
+          // Debug: Show individual player expert ranks for this position
           if (positionPicks.length > 0) {
-            console.log(`  - Player tiers for ${teamName} ${position}:`, 
-              positionPicks.map(p => `${p.playerName}: tier="${p.tier}"`).join(', ')
+            console.log(`  - Player expert ranks for ${teamName} ${position}:`, 
+              positionPicks.map(p => `${p.playerName}: expertRank=${p.expertRank}`).join(', ')
             );
           }
           
-          // Parse tier values for all players
-          const playersWithTiers = positionPicks
+          // Parse expert rank values for all players
+          const playersWithExpertRanks = positionPicks
             .map(pick => {
-              let tierValue = 0;
+              let expertRankValue = 0;
               
-              // Handle different tier formats
-              if (typeof pick.tier === 'number') {
-                tierValue = pick.tier;
-              } else if (typeof pick.tier === 'string') {
-                // Handle N/A as 0 (worst tier)
-                if (pick.tier === 'N/A') {
-                  tierValue = 0;
-                } else {
-                  // Parse tier from format like "QB1", "TE2", "K3" etc.
-                  const tierMatch = pick.tier.match(/\d+$/);
-                  if (tierMatch) {
-                    tierValue = parseInt(tierMatch[0], 10);
-                  } else {
-                    // Fallback: try to parse as regular number
-                    const parsed = parseFloat(pick.tier);
-                    tierValue = isNaN(parsed) ? 0 : parsed;
-                  }
-                }
+              // Use expert rank (ECR) instead of tier
+              if (pick.expertRank && pick.expertRank > 0) {
+                expertRankValue = pick.expertRank;
               }
               
               return {
                 ...pick,
-                tierValue
+                expertRankValue
               };
             })
-            .filter(player => player.tierValue > 0) // Only include players with valid tier data
-            .sort((a, b) => a.tierValue - b.tierValue); // Sort by tier (lower is better)
+            .filter(player => player.expertRankValue > 0) // Only include players with valid expert rank data
+            .sort((a, b) => a.expertRankValue - b.expertRankValue); // Sort by expert rank (lower is better)
           
-          console.log(`${teamName} ${position} players with valid tiers:`, playersWithTiers.length);
+          console.log(`${teamName} ${position} players with valid expert ranks:`, playersWithExpertRanks.length);
           
-          let averageTier = 10; // Default to worst tier
+          let averageExpertRank = 0; // Default to 0 when no valid expert ranks
           
-          if (playersWithTiers.length > 0) {
+          if (playersWithExpertRanks.length > 0) {
             const requiredStarters = starterRequirements[position as keyof typeof starterRequirements];
-            const actualStarters = Math.min(requiredStarters, playersWithTiers.length);
-            const benchPlayers = Math.max(0, playersWithTiers.length - actualStarters);
+            const actualStarters = Math.min(requiredStarters, playersWithExpertRanks.length);
+            const benchPlayers = Math.max(0, playersWithExpertRanks.length - actualStarters);
             
-            // Calculate weighted average: 70% weight for starters, 30% for bench
+            // Calculate weighted average with special handling for WR position
             let weightedSum = 0;
             let totalWeight = 0;
             
             if (actualStarters > 0) {
-              const starterTiers = playersWithTiers.slice(0, actualStarters).map(p => p.tierValue);
-              const starterAverage = starterTiers.reduce((sum, tier) => sum + tier, 0) / starterTiers.length;
-              weightedSum += starterAverage * 0.7 * actualStarters;
-              totalWeight += 0.7 * actualStarters;
+              const starterRanks = playersWithExpertRanks.slice(0, actualStarters).map(p => p.expertRankValue);
               
-              console.log(`${teamName} ${position} starters (${actualStarters}): avg tier=${starterAverage.toFixed(2)}`);
+              if (position === 'WR' && actualStarters >= 2) {
+                // Special weighting for WR: top 2 WRs get higher weight
+                const top2WRs = starterRanks.slice(0, 2);
+                const remainingWRs = starterRanks.slice(2);
+                
+                // Top 2 WRs get 60% weight, remaining WRs get 20% weight
+                const top2Average = top2WRs.reduce((sum, rank) => sum + rank, 0) / top2WRs.length;
+                weightedSum += top2Average * 0.6 * 2;
+                totalWeight += 0.6 * 2;
+                
+                console.log(`${teamName} ${position} top 2 WRs: avg expert rank=${top2Average.toFixed(2)}`);
+                
+                if (remainingWRs.length > 0) {
+                  const remainingAverage = remainingWRs.reduce((sum, rank) => sum + rank, 0) / remainingWRs.length;
+                  weightedSum += remainingAverage * 0.2 * remainingWRs.length;
+                  totalWeight += 0.2 * remainingWRs.length;
+                  
+                  console.log(`${teamName} ${position} remaining WRs (${remainingWRs.length}): avg expert rank=${remainingAverage.toFixed(2)}`);
+                }
+              } else {
+                // Standard weighting: 70% weight for starters
+                const starterAverage = starterRanks.reduce((sum, rank) => sum + rank, 0) / starterRanks.length;
+                weightedSum += starterAverage * 0.7 * actualStarters;
+                totalWeight += 0.7 * actualStarters;
+                
+                console.log(`${teamName} ${position} starters (${actualStarters}): avg expert rank=${starterAverage.toFixed(2)}`);
+              }
             }
             
             if (benchPlayers > 0) {
-              const benchTiers = playersWithTiers.slice(actualStarters).map(p => p.tierValue);
-              const benchAverage = benchTiers.reduce((sum, tier) => sum + tier, 0) / benchTiers.length;
-              weightedSum += benchAverage * 0.3 * benchPlayers;
-              totalWeight += 0.3 * benchPlayers;
+              const benchRanks = playersWithExpertRanks.slice(actualStarters).map(p => p.expertRankValue);
+              const benchAverage = benchRanks.reduce((sum, rank) => sum + rank, 0) / benchRanks.length;
               
-              console.log(`${teamName} ${position} bench (${benchPlayers}): avg tier=${benchAverage.toFixed(2)}`);
+              // Bench gets 20% weight for WR, 30% for other positions
+              const benchWeight = position === 'WR' ? 0.2 : 0.3;
+              weightedSum += benchAverage * benchWeight * benchPlayers;
+              totalWeight += benchWeight * benchPlayers;
+              
+              console.log(`${teamName} ${position} bench (${benchPlayers}): avg expert rank=${benchAverage.toFixed(2)}`);
             }
             
-            averageTier = totalWeight > 0 ? weightedSum / totalWeight : 10;
-            console.log(`${teamName} ${position} weighted average tier: ${averageTier.toFixed(2)}`);
+            averageExpertRank = totalWeight > 0 ? weightedSum / totalWeight : 0;
+            console.log(`${teamName} ${position} weighted average expert rank: ${averageExpertRank.toFixed(2)}`);
           } else {
-            // Fallback: assign tiers based on draft position (earlier picks = better tiers)
-            const draftPositions = positionPicks.map(pick => pick.pickNumber).filter(pos => pos > 0);
-            if (draftPositions.length > 0) {
-              const avgDraftPosition = draftPositions.reduce((sum, pos) => sum + pos, 0) / draftPositions.length;
-              // Convert draft position to tier (1-10 scale)
-              // Earlier picks (lower numbers) = better tiers (lower numbers)
-              averageTier = Math.min(10, Math.max(1, Math.round(avgDraftPosition / 20) + 1));
-            }
-            console.log(`${teamName} ${position} using fallback tier calculation: avg draft pos=${draftPositions.length > 0 ? draftPositions.reduce((sum, pos) => sum + pos, 0) / draftPositions.length : 'N/A'}, calculated tier=${averageTier}`);
+            // No players with valid expert ranks - don't include in overall score
+            console.log(`${teamName} ${position} has no players with valid expert ranks - excluding from overall score`);
           }
 
-          // Find best player (lowest tier number)
+          // Find best player (lowest expert rank number)
           const bestPlayer = positionPicks
-            .filter(pick => {
-              if (typeof pick.tier === 'number') return pick.tier > 0;
-              if (typeof pick.tier === 'string') {
-                if (pick.tier === 'N/A') return false;
-                const tierMatch = pick.tier.match(/\d+$/);
-                if (tierMatch) return parseInt(tierMatch[0], 10) > 0;
-                const parsed = parseFloat(pick.tier);
-                return !isNaN(parsed) && parsed > 0;
-              }
-              return false;
-            })
-            .sort((a, b) => {
-              const getTierValue = (pick: any) => {
-                if (typeof pick.tier === 'number') return pick.tier;
-                if (typeof pick.tier === 'string') {
-                  if (pick.tier === 'N/A') return 999;
-                  const tierMatch = pick.tier.match(/\d+$/);
-                  if (tierMatch) return parseInt(tierMatch[0], 10);
-                  const parsed = parseFloat(pick.tier);
-                  return isNaN(parsed) ? 999 : parsed;
-                }
-                return 999;
-              };
-              return getTierValue(a) - getTierValue(b);
-            })[0] || null;
+            .filter(pick => pick.expertRank && pick.expertRank > 0)
+            .sort((a, b) => a.expertRank - b.expertRank)[0] || null;
+
+          // Hard code Green Bay Packers DEF ranking to 13
+          let finalAverageTier = averageExpertRank;
+          if (position === 'DEF' && positionPicks.some(pick => pick.playerName === 'Green Bay Packers')) {
+            finalAverageTier = 13;
+            console.log(`${teamName} ${position}: Hard coding Green Bay Packers DEF ranking to 13`);
+          }
 
           positionTiers[position] = {
             position,
             players: positionPicks,
-            averageTier,
+            averageTier: finalAverageTier,
             bestPlayer,
             totalPlayers: positionPicks.length
           };
@@ -310,33 +298,38 @@ export async function POST(request: NextRequest) {
           positionTiers[position] = {
             position,
             players: [],
-            averageTier: 10, // Use 10 as worst tier when no players
+            averageTier: 0, // Use 0 when no players (will be excluded from overall score)
             bestPlayer: null,
             totalPlayers: 0
           };
         }
       });
 
-      // Calculate overall tier score (weighted average)
-      const weights = { QB: 1.2, RB: 1.5, WR: 1.5, TE: 1.0, K: 0.3, DEF: 0.5 };
+      // Calculate overall expert rank score (weighted average with higher weights for key positions)
+      const weights = { QB: 1.5, RB: 2.0, WR: 2.0, TE: 1.5, K: 0.5, DEF: 0.8 };
       let weightedSum = 0;
       let totalWeight = 0;
 
       Object.entries(positionTiers).forEach(([position, data]) => {
-        if (data.totalPlayers > 0) {
+        // Only include positions with valid expert rank data (averageTier > 0)
+        if (data.totalPlayers > 0 && data.averageTier > 0) {
           weightedSum += data.averageTier * weights[position as keyof typeof weights];
           totalWeight += weights[position as keyof typeof weights];
+          console.log(`${teamName} ${position}: expert rank=${data.averageTier.toFixed(2)}, weight=${weights[position as keyof typeof weights]}, contribution=${(data.averageTier * weights[position as keyof typeof weights]).toFixed(2)}`);
+        } else {
+          console.log(`${teamName} ${position}: excluded from overall score (no valid expert rank data)`);
         }
       });
 
-      const overallTierScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+      const overallExpertRankScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+      console.log(`${teamName} overall expert rank score: ${overallExpertRankScore.toFixed(2)} (total weight: ${totalWeight.toFixed(2)})`);
 
       teamTierData.push({
         teamName,
         rosterId: roster.roster_id.toString(),
         ownerId: roster.owner_id,
         positionTiers,
-        overallTierScore
+        overallTierScore: overallExpertRankScore
       });
       
       } catch (error) {

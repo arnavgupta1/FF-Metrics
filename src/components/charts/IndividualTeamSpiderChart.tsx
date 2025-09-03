@@ -14,22 +14,30 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
   // Prepare data for the radar chart
   const chartData = positions.map(position => {
     const positionData = team.positionTiers[position];
-    if (positionData && positionData.totalPlayers > 0) {
-      // Convert tier to numeric value (lower tier number = better)
-      // Reverse the scale: lower tiers (better players) = higher values (longer stems)
-      const tierValue = Math.max(1, Math.min(10, Math.round(positionData.averageTier || 10)));
-      const reversedValue = 11 - tierValue; // Reverse: tier 1 becomes 10, tier 10 becomes 1
+    if (positionData && positionData.totalPlayers > 0 && positionData.averageTier > 0) {
+      // Invert expert rank so lower ranks (better players) get longer stems
+      // Expert rank 1 (best) should be at outer edge (30), expert rank 30 (worst) should be at inner edge (1)
+      const expertRank = positionData.averageTier;
+      
+      // Adjust axis scaling for RB and WR to start at 10 instead of 0/1
+      let adjustedRank = expertRank;
+      if (position === 'RB' || position === 'WR') {
+        adjustedRank = expertRank - 5;
+      }
+      
+      const invertedValue = 31 - adjustedRank; // Invert: rank 1 becomes 30, rank 30 becomes 1
+      
       return {
         position,
-        tier: reversedValue,
+        tier: invertedValue,
         players: positionData.totalPlayers,
         bestPlayer: positionData.bestPlayer?.playerName || 'N/A'
       };
     } else {
-      // No players at this position - use min value (shortest stem)
+      // No players at this position or no valid expert rank - use 0 to maintain line connections
       return {
         position,
-        tier: 1,
+        tier: 0,
         players: 0,
         bestPlayer: 'N/A'
       };
@@ -57,14 +65,14 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
         <div className="bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg max-w-xs">
           <h4 className="text-white font-semibold mb-2">{position} - {team.teamName}</h4>
           <div className="text-gray-400 text-sm mb-2">
-            Average Tier: {positionData.averageTier.toFixed(1)} | Players: {positionData.totalPlayers}
+            Average Expert Rank: {positionData.averageTier.toFixed(1)} | Players: {positionData.totalPlayers}
           </div>
           <div className="space-y-1">
             {positionData.players.map((player, index) => (
               <div key={index} className="text-gray-300 text-sm">
                 • {player.playerName}
-                {player.tier !== 'N/A' && (
-                  <span className="text-gray-500 ml-1">({player.tier})</span>
+                {player.expertRank > 0 && (
+                  <span className="text-gray-500 ml-1">(Rank: {player.expertRank})</span>
                 )}
                 {player.pickNumber > 0 && (
                   <span className="text-blue-400 ml-1">[Draft Pick #{player.pickNumber}]</span>
@@ -82,7 +90,7 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
     <div className="bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-700">
       <div className="mb-4">
         <h3 className="text-lg font-medium text-white">{team.teamName}</h3>
-        <p className="text-sm text-gray-300">Overall Tier Score: {team.overallTierScore.toFixed(2)}</p>
+        <p className="text-sm text-gray-300">Overall Expert Rank Score: {team.overallTierScore.toFixed(2)}</p>
       </div>
 
       <div className="h-80">
@@ -95,9 +103,9 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
             />
             <PolarRadiusAxis 
               angle={90} 
-              domain={[1, 10]} 
-              tick={{ fill: '#9ca3af', fontSize: 10 }}
-              tickCount={5}
+              domain={[1, 30]} 
+              tick={false}
+              tickCount={6}
             />
             <Tooltip content={<CustomTooltip />} />
             <Radar
@@ -114,11 +122,13 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
 
       {/* Position Details */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-        {chartData.map((data) => (
+        {chartData.map((data) => {
+          const positionData = team.positionTiers[data.position];
+          return (
           <div key={data.position} className="bg-gray-700 rounded p-2">
             <div className="text-xs text-gray-300">{data.position}</div>
             <div className="text-sm text-white font-medium">
-              Tier: {data.tier === 1 ? 'N/A' : (11 - data.tier).toFixed(1)}
+              Expert Rank: {data.tier === 0 ? 'N/A' : (31 - data.tier).toFixed(1)}
             </div>
             <div className="text-xs text-gray-400">
               Players: {data.players}
@@ -129,14 +139,11 @@ export const IndividualTeamSpiderChart: React.FC<IndividualTeamSpiderChartProps>
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="mt-4 text-sm text-gray-300 text-center">
-        <p>
-          <span className="text-yellow-400">Longer stems = Better players</span>
-        </p>
-      </div>
+
     </div>
   );
 };
