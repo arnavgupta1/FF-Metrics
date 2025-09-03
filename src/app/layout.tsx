@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Fantasy Football Analytics Dashboard',
   description: 'Comprehensive fantasy football analytics with advanced metrics and insights',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

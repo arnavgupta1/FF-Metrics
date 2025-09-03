@@ -330,7 +330,7 @@ function DraftPicksTable({
               {picks.map((pick) => (
                 <tr key={pick.pickNumber} className="hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                    {pick.round}
+                    {pick.round}.{(pick.pickNumber - 1) % 10 + 1 < 10 ? '0' : ''}{(pick.pickNumber - 1) % 10 + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {pick.pickNumber}
