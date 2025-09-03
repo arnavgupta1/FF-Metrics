@@ -199,6 +199,7 @@ export function DraftAnalysisDashboard({ leagueId }: DraftAnalysisDashboardProps
             
             <DraftPicksTable 
               picks={filteredPicks}
+              allPicks={analysisData.allPicks}
               filters={filters}
               onFiltersChange={setFilters}
             />
@@ -217,14 +218,16 @@ export function DraftAnalysisDashboard({ leagueId }: DraftAnalysisDashboardProps
 // Draft Picks Table Component
 function DraftPicksTable({ 
   picks, 
+  allPicks,
   filters, 
   onFiltersChange
 }: { 
   picks: DraftPickAnalysis[];
+  allPicks: DraftPickAnalysis[];
   filters: any;
   onFiltersChange: (filters: any) => void;
 }) {
-  const teamOptions = Array.from(new Set(picks.map(pick => pick.team)));
+  const teamOptions = Array.from(new Set(allPicks.map(pick => pick.team)));
   const positionOptions = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
 
   return (
