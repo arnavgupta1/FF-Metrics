@@ -13,6 +13,7 @@ export function DraftAnalysisDashboard({ leagueId }: DraftAnalysisDashboardProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'picks' | 'team-tiers'>('picks');
+  const [showDefinitions, setShowDefinitions] = useState(true);
   const [filters, setFilters] = useState({
     team: '',
     position: '',
@@ -148,11 +149,60 @@ export function DraftAnalysisDashboard({ leagueId }: DraftAnalysisDashboardProps
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'picks' ? (
-          <DraftPicksTable 
-            picks={filteredPicks}
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
+          <>
+            {/* Definitions */}
+            <div className="bg-blue-900/30 border border-blue-800/50 rounded-lg mb-6">
+              <button
+                onClick={() => setShowDefinitions(!showDefinitions)}
+                className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-blue-800/20 transition-colors rounded-lg"
+              >
+                <h2 className="text-lg font-semibold text-white">Metric Definitions</h2>
+                <svg
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    showDefinitions ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showDefinitions && (
+                <div className="px-6 pb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-300">
+                        <span className="font-medium text-white">ADP:</span> Updated based on league settings from Sleeper. Picks are converted to relevant draft format (1.01-1.10, 2.01-2.10, etc.).
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-300">
+                        <span className="font-medium text-white">Expert Rank:</span> Based on scoring settings from FantasyPros (not Arnav). Rank within position group.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-300">
+                        <span className="font-medium text-white">VAL-ADP:</span> The pick at which a player becomes good value. Player's current ADP that is higher than VAL-ADP is marked with a "+" indicating good values. Calculated by Linear Regression (ADP vs. Proj Points) and determining expected points per pick given the player's position.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-blue-800/30">
+                    <p className="text-sm text-blue-200 italic">
+                      Note: N/A is shown for DEF and K positions since they don't have ADP.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <DraftPicksTable 
+              picks={filteredPicks}
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+          </>
         ) : (
           <TeamTiersDashboard 
             leagueId={leagueId}
@@ -245,6 +295,9 @@ function DraftPicksTable({
             <thead className="bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Round
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Pick
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -276,6 +329,9 @@ function DraftPicksTable({
             <tbody className="bg-gray-800 divide-y divide-gray-700">
               {picks.map((pick) => (
                 <tr key={pick.pickNumber} className="hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                    {pick.round}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {pick.pickNumber}
                   </td>

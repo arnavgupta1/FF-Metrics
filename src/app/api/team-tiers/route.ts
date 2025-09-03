@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
             
             currentRosterPlayers.push({
               pickNumber: 0, // Not a draft pick
+              round: 0, // Not a draft pick
               playerName: `${player.first_name} ${player.last_name}`,
               position: player.position,
               team: teamName,

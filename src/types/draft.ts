@@ -41,6 +41,7 @@ export interface SleeperDraftPick {
 
 export interface DraftPickAnalysis {
   pickNumber: number;
+  round: number;
   playerName: string;
   position: string;
   team: string;

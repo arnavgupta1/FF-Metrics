@@ -74,6 +74,7 @@ export class DraftAnalyticsCalculator {
 
         return {
           pickNumber: pick.pick_no,
+          round: pick.round,
           playerName,
           position,
           team: teamName,
@@ -92,6 +93,7 @@ export class DraftAnalyticsCalculator {
         // Player not found in MockoSheet data
         return {
           pickNumber: pick.pick_no,
+          round: pick.round,
           playerName,
           position,
           team: teamName,
