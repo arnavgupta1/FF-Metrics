@@ -7,11 +7,11 @@ interface SeasonOverviewTableProps {
   teams: Team[];
 }
 
-type SortField = 'sleeperRank' | 'powerRank' | 'wins' | 'actualPoints' | 'powerRankValue';
+type SortField = 'sleeperRank' | 'wins' | 'actualPoints';
 type SortDirection = 'asc' | 'desc';
 
 export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams }) => {
-  const [sortField, setSortField] = useState<SortField>('powerRank');
+  const [sortField, setSortField] = useState<SortField>('sleeperRank');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const sortedTeams = useMemo(() => {
@@ -72,14 +72,15 @@ export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams 
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-700">
             <tr>
-              <SortableHeader field="powerRank">Power Rank</SortableHeader>
               <SortableHeader field="sleeperRank">Sleeper Rank</SortableHeader>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Owner
               </th>
               <SortableHeader field="wins">W</SortableHeader>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                L
+              </th>
               <SortableHeader field="actualPoints">Actual Points</SortableHeader>
-              <SortableHeader field="powerRankValue">Power Rank Value</SortableHeader>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                 Opponent Points
               </th>
@@ -94,11 +95,6 @@ export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams 
           <tbody className="bg-gray-800 divide-y divide-gray-700">
             {sortedTeams.map((team, index) => (
               <tr key={team.id} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <div className="text-sm font-mono font-bold text-white">
-                    {team.powerRank}
-                  </div>
-                </td>
                 <td className="px-3 py-4 whitespace-nowrap">
                   <div className="text-sm font-mono text-white">
                     {team.sleeperRank}
@@ -115,13 +111,13 @@ export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams 
                   </div>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-mono font-medium ${getValueColor(team.actualPoints)}`}>
-                    {formatNumber(team.actualPoints)}
+                  <div className="text-sm font-mono text-white">
+                    {team.losses}
                   </div>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-mono font-medium ${getValueColor(team.powerRankValue)}`}>
-                    {formatNumber(team.powerRankValue)}
+                  <div className={`text-sm font-mono font-medium ${getValueColor(team.actualPoints)}`}>
+                    {formatNumber(team.actualPoints)}
                   </div>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">

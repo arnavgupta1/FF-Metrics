@@ -7,7 +7,7 @@ interface PlayerValueTableProps {
   playerValues: PlayerValue[];
 }
 
-type SortField = 'points' | 'rank' | 'vorp' | 'vors' | 'vobp';
+type SortField = 'points' | 'rank' | 'vorp' | 'vobp';
 type SortDirection = 'asc' | 'desc';
 
 export const PlayerValueTable: React.FC<PlayerValueTableProps> = ({ playerValues }) => {
@@ -116,21 +116,13 @@ export const PlayerValueTable: React.FC<PlayerValueTableProps> = ({ playerValues
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-800/50">
             <h4 className="font-semibold text-blue-200 mb-2">VORP</h4>
             <p className="text-blue-300 text-xs leading-relaxed">
               <strong>Value Over Replacement Player</strong><br/>
               How much better this player is than a typical waiver wire pickup at their position. 
               Calculated as: Player Points - Average Position Points
-            </p>
-          </div>
-          <div className="bg-green-900/30 p-3 rounded-lg border border-green-800/50">
-            <h4 className="font-semibold text-green-200 mb-2">VORS</h4>
-            <p className="text-green-300 text-xs leading-relaxed">
-              <strong>Value Over Replacement Starter</strong><br/>
-              How much better this player is than the minimum acceptable starter at their position.
-              Baseline: QB12, RB30, WR30, TE12, K12, DEF12
             </p>
           </div>
           <div className="bg-purple-900/30 p-3 rounded-lg border border-purple-800/50">
@@ -294,18 +286,7 @@ export const PlayerValueTable: React.FC<PlayerValueTableProps> = ({ playerValues
                   How much better this player is than a typical waiver wire pickup at their position.
                 </div>
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider group relative">
-                <div className="flex items-center space-x-1">
-                  <span>VORS</span>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                  <strong>Value Over Replacement Starter</strong><br/>
-                  How much better this player is than the minimum acceptable starter at their position.
-                </div>
-              </th>
+
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider group relative">
                 <div className="flex items-center space-x-1">
                   <span>VOBP</span>
@@ -351,11 +332,6 @@ export const PlayerValueTable: React.FC<PlayerValueTableProps> = ({ playerValues
                 <td className="px-3 py-4 whitespace-nowrap">
                   <div className={`text-sm font-mono font-medium ${getValueColor(player.vorp)}`}>
                     {formatNumber(player.vorp)}
-                  </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-mono font-medium ${getValueColor(player.vors)}`}>
-                    {formatNumber(player.vors)}
                   </div>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">

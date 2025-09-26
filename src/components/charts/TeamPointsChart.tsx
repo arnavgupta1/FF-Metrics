@@ -4,23 +4,23 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Team } from '@/types';
 
-interface PowerRankingChartProps {
+interface TeamPointsChartProps {
   teams: Team[];
 }
 
-export const PowerRankingChart: React.FC<PowerRankingChartProps> = ({ teams }) => {
+export const TeamPointsChart: React.FC<TeamPointsChartProps> = ({ teams }) => {
   const chartData = teams
-    .sort((a, b) => a.powerRank - b.powerRank)
+    .sort((a, b) => b.actualPoints - a.actualPoints)
     .map(team => ({
       name: team.owner,
-      powerRank: team.powerRank,
-      powerRankValue: team.powerRankValue,
       actualPoints: team.actualPoints,
+      wins: team.wins,
+      losses: team.losses,
     }));
 
   return (
     <div className="bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-700">
-      <h3 className="text-lg font-medium text-white mb-4">Power Rankings vs Actual Points</h3>
+      <h3 className="text-lg font-medium text-white mb-4">Team Performance Overview</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -33,8 +33,7 @@ export const PowerRankingChart: React.FC<PowerRankingChartProps> = ({ teams }) =
               interval={0}
               tick={{ fontSize: 12, fill: '#d1d5db' }}
             />
-            <YAxis yAxisId="left" orientation="left" stroke="#a78bfa" tick={{ fill: '#d1d5db' }} />
-            <YAxis yAxisId="right" orientation="right" stroke="#34d399" tick={{ fill: '#d1d5db' }} />
+            <YAxis stroke="#34d399" tick={{ fill: '#d1d5db' }} />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: '#1f2937', 
@@ -43,15 +42,12 @@ export const PowerRankingChart: React.FC<PowerRankingChartProps> = ({ teams }) =
                 color: '#f9fafb'
               }}
             />
-            <Bar yAxisId="left" dataKey="powerRankValue" fill="#a78bfa" name="Power Rank Value" />
-            <Bar yAxisId="right" dataKey="actualPoints" fill="#34d399" name="Actual Points" />
+            <Bar dataKey="actualPoints" fill="#34d399" name="Actual Points" />
           </BarChart>
         </ResponsiveContainer>
       </div>
       <div className="mt-4 text-sm text-gray-300 text-center">
-        <span className="inline-block w-3 h-3 bg-purple-400 rounded mr-2"></span>
-        Power Rank Value
-        <span className="inline-block w-3 h-3 bg-green-400 rounded ml-4 mr-2"></span>
+        <span className="inline-block w-3 h-3 bg-green-400 rounded mr-2"></span>
         Actual Points
       </div>
     </div>

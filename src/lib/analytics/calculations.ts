@@ -1,18 +1,6 @@
-import { Team, PlayerValue, PowerRanking, LineupAnalysis } from '@/types';
+import { Team, PlayerValue, LineupAnalysis } from '@/types';
 
 export class FantasyAnalytics {
-  /**
-   * Calculate Power Ranking using composite scoring algorithm
-   * Formula: PowerRank = (TotalPoints * 0.4) + (OptimalAverage * 0.35) + (Recent3Week * 0.25)
-   */
-  static calculatePowerRanking(
-    totalPoints: number,
-    optimalAverage: number,
-    recent3Week: number
-  ): number {
-    return (totalPoints * 0.4) + (optimalAverage * 0.35) + (recent3Week * 0.25);
-  }
-
   /**
    * Calculate Value Over Replacement Player (VORP)
    * VORP = Player's points per game - Replacement player points per game
@@ -22,17 +10,6 @@ export class FantasyAnalytics {
     replacementPoints: number
   ): number {
     return playerPoints - replacementPoints;
-  }
-
-  /**
-   * Calculate Value Over Replacement Starter (VORS)
-   * VORS = Player's points per game - Baseline starter points per game
-   */
-  static calculateVORS(
-    playerPoints: number,
-    baselineStarterPoints: number
-  ): number {
-    return playerPoints - baselineStarterPoints;
   }
 
   /**
@@ -96,16 +73,16 @@ export class FantasyAnalytics {
   }
 
   /**
-   * Get baseline starter points for VORS calculations
-   * Updated for 10-team league (was 12-team)
+   * Get baseline starter points for position analysis
+   * Updated for 10-team league
    */
   static getBaselineStarterPoints(position: string): number {
     const baselines: Record<string, number> = {
-      'QB': 20.0,  // QB10 baseline (was QB12)
-      'RB': 14.0,  // RB20 baseline (was RB30)
-      'WR': 13.5,  // WR20 baseline (was WR30)
-      'TE': 10.0,  // TE10 baseline (was TE12)
-      'K': 9.0,    // K10 baseline (was K12)
+      'QB': 20.0,  // QB10 baseline
+      'RB': 14.0,  // RB20 baseline
+      'WR': 13.5,  // WR20 baseline
+      'TE': 10.0,  // TE10 baseline
+      'K': 9.0,    // K10 baseline
       'DEF': 8.0,  // DEF10 baseline
     };
     return baselines[position] || 0;
