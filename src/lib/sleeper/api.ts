@@ -5,10 +5,12 @@ const SLEEPER_BASE_URL = 'https://api.sleeper.app/v1';
 class SleeperAPI {
   private async fetch<T>(endpoint: string): Promise<T> {
     try {
+      console.log(`[DEBUG] Sleeper API Request: ${SLEEPER_BASE_URL}${endpoint}`);
       const response = await fetch(`${SLEEPER_BASE_URL}${endpoint}`);
       
       if (!response.ok) {
         if (response.status === 429) {
+          console.log(`[DEBUG] Rate limit hit, retrying after 1s delay`);
           // Rate limit exceeded - implement retry with backoff
           await this.delay(1000);
           return this.fetch(endpoint);
@@ -37,7 +39,9 @@ class SleeperAPI {
         throw new Error(errorMessage);
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log(`[DEBUG] Sleeper API Response for ${endpoint}:`, Array.isArray(data) ? `Array with ${data.length} items` : typeof data === 'object' ? `Object with keys: ${Object.keys(data).slice(0, 10).join(', ')}` : data);
+      return data;
     } catch (error) {
       console.error(`Error fetching ${endpoint}:`, error);
       throw error;

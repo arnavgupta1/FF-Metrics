@@ -60,9 +60,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
         // Fetch player stats for the current season (needed for both modes)
         let playerStats: Record<string, any> = {};
         try {
-          playerStats = await sleeperAPI.getPlayerStats(currentSeason);
+          // Try current season first, fallback to 2024 if current season isn't available
+          try {
+            playerStats = await sleeperAPI.getPlayerStats(currentSeason);
+          } catch (currentSeasonError) {
+            console.log(`[DEBUG] Current season ${currentSeason} stats not available, trying 2024:`, currentSeasonError);
+            playerStats = await sleeperAPI.getPlayerStats('2024');
+          }
+          console.log(`[DEBUG] Fetched player stats with ${Object.keys(playerStats).length} players`);
         } catch (error) {
-          console.warn('Could not fetch player stats:', error);
+          console.warn('Could not fetch player stats for any season:', error);
           // Continue without stats
         }
 
@@ -97,11 +104,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
           setIsRosterOnly(true);
           
           // Process data for roster-only mode (without matchup data)
+          console.log('[DEBUG] Dashboard - Processing roster-only data');
+          console.log('[DEBUG] Dashboard - Rosters sample:', rosters[0]);
+          console.log('[DEBUG] Dashboard - Users sample:', users[0]);
+          console.log('[DEBUG] Dashboard - Player stats keys:', playerStats ? Object.keys(playerStats).slice(0, 5) : 'No stats');
+          console.log('[DEBUG] Dashboard - Sample player stats:', playerStats ? playerStats[Object.keys(playerStats)[0]] : 'No stats');
+          
           const processedTeams = DataProcessor.processTeams(rosters, users, [], players, {});
           const processedPlayerValues = DataProcessor.processPlayerValues(rosters, users, players, playerStats);
           
-          console.log('Processed teams:', processedTeams);
-          console.log('Processed player values:', processedPlayerValues);
+          console.log('[DEBUG] Dashboard - Processed teams:', processedTeams);
+          console.log('[DEBUG] Dashboard - Processed player values sample:', processedPlayerValues.slice(0, 3));
           
           setTeams(processedTeams);
           setPlayerValues(processedPlayerValues);
@@ -121,8 +134,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
         }
 
         // Process data into dashboard-ready format for full analytics
+        console.log('[DEBUG] Dashboard - Processing full analytics data');
+        console.log('[DEBUG] Dashboard - Matchups sample:', matchups[0]?.slice(0, 2));
+        console.log('[DEBUG] Dashboard - Projections keys:', projections ? Object.keys(projections).slice(0, 5) : 'No projections');
+        
         const processedTeams = DataProcessor.processTeams(rosters, users, matchups, players, projections);
         const processedPlayerValues = DataProcessor.processPlayerValues(rosters, users, players, playerStats);
+        
+        console.log('[DEBUG] Dashboard - Full processed teams:', processedTeams);
+        console.log('[DEBUG] Dashboard - Full processed player values sample:', processedPlayerValues.slice(0, 3));
 
         setTeams(processedTeams);
         setPlayerValues(processedPlayerValues);

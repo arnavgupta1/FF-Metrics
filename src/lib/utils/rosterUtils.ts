@@ -28,9 +28,10 @@ export function normalizeRosterId(rosterId: string | number): string {
  * @param rosterId - The roster ID to look for
  * @returns true if the matchup involves the roster
  */
-export function isRosterInMatchup(matchup: { roster_id: string; opponent_roster_id: string }, rosterId: string | number): boolean {
+export function isRosterInMatchup(matchup: { roster_id: string | number }, rosterId: string | number): boolean {
   const normalizedRosterId = normalizeRosterId(rosterId);
-  return matchup.roster_id === normalizedRosterId || matchup.opponent_roster_id === normalizedRosterId;
+  const normalizedMatchupRosterId = normalizeRosterId(matchup.roster_id);
+  return normalizedMatchupRosterId === normalizedRosterId;
 }
 
 /**
@@ -39,13 +40,13 @@ export function isRosterInMatchup(matchup: { roster_id: string; opponent_roster_
  * @param rosterId - The roster ID to filter by
  * @returns Array of matchups involving the roster
  */
-export function filterMatchupsForRoster<T extends { roster_id: string; opponent_roster_id: string }>(
+export function filterMatchupsForRoster<T extends { roster_id: string | number }>(
   matchups: T[],
   rosterId: string | number
 ): T[] {
   const normalizedRosterId = normalizeRosterId(rosterId);
   return matchups.filter(matchup => 
-    matchup.roster_id === normalizedRosterId || matchup.opponent_roster_id === normalizedRosterId
+    normalizeRosterId(matchup.roster_id) === normalizedRosterId
   );
 }
 
@@ -56,23 +57,42 @@ export function filterMatchupsForRoster<T extends { roster_id: string; opponent_
  * @returns The team's points
  */
 export function getTeamPointsFromMatchup(
-  matchup: { roster_id: string; opponent_roster_id: string; points: number; opponent_points: number },
+  matchup: { roster_id: string | number; points: number },
   rosterId: string | number
 ): number {
   const normalizedRosterId = normalizeRosterId(rosterId);
-  return matchup.roster_id === normalizedRosterId ? matchup.points : matchup.opponent_points;
+  const normalizedMatchupRosterId = normalizeRosterId(matchup.roster_id);
+  
+  if (normalizedMatchupRosterId === normalizedRosterId) {
+    return matchup.points;
+  }
+  
+  console.warn(`[DEBUG] getTeamPointsFromMatchup: Roster ${rosterId} not found in matchup for roster ${matchup.roster_id}`);
+  return 0;
 }
 
 /**
- * Gets the opponent's points from a matchup
- * @param matchup - The matchup
+ * Gets the opponent's points from a matchup by finding the other team in the same matchup
+ * @param allMatchups - All matchups for the week
+ * @param matchup - The team's matchup
  * @param rosterId - The roster ID
  * @returns The opponent's points
  */
 export function getOpponentPointsFromMatchup(
-  matchup: { roster_id: string; opponent_roster_id: string; points: number; opponent_points: number },
+  allMatchups: { roster_id: string | number; matchup_id: string | number; points: number }[],
+  matchup: { roster_id: string | number; matchup_id: string | number; points: number },
   rosterId: string | number
 ): number {
-  const normalizedRosterId = normalizeRosterId(rosterId);
-  return matchup.roster_id === normalizedRosterId ? matchup.opponent_points : matchup.points;
+  // Find the opponent in the same matchup
+  const opponentMatchup = allMatchups.find(m => 
+    normalizeRosterId(m.matchup_id) === normalizeRosterId(matchup.matchup_id) &&
+    normalizeRosterId(m.roster_id) !== normalizeRosterId(rosterId)
+  );
+  
+  if (opponentMatchup) {
+    return opponentMatchup.points;
+  }
+  
+  console.warn(`[DEBUG] getOpponentPointsFromMatchup: No opponent found for roster ${rosterId} in matchup ${matchup.matchup_id}`);
+  return 0;
 }

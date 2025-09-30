@@ -74,12 +74,14 @@ export interface SleeperPlayer {
 }
 
 export interface SleeperMatchup {
-  matchup_id: string;
-  roster_id: string;
-  opponent_roster_id: string;
-  week: number;
+  matchup_id: string | number;
+  roster_id: string | number;
   points: number;
-  opponent_points: number;
+  players: string[];
+  starters: string[];
+  starters_points: number[];
+  players_points: Record<string, number>;
+  custom_points?: number | null;
 }
 
 // Dashboard Types
