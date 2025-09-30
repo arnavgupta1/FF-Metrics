@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Team, PlayerValue } from '@/types';
 import { SeasonOverviewTable } from './SeasonOverviewTable';
-import { PlayerValueTable } from './PlayerValueTable';
-import { AdvancedAnalytics } from './AdvancedAnalytics';
+import { TeamPlayerList } from './TeamPlayerList';
 import { sleeperAPI } from '@/lib/sleeper/api';
 import { DataProcessor } from '@/lib/analytics/dataProcessor';
 
@@ -266,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
           {/* Player Value Analysis Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-200 mb-4">Player Value Analysis</h2>
-            <PlayerValueTable playerValues={playerValues} />
+            <TeamPlayerList playerValues={playerValues} />
           </div>
         </div>
       </div>
@@ -314,16 +313,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
           <SeasonOverviewTable teams={teams} />
         </div>
 
-        {/* Advanced Analytics Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-200 mb-4">Advanced Analytics</h2>
-          <AdvancedAnalytics teams={teams} />
-        </div>
-
         {/* Player Value Analysis Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-200 mb-4">Player Value Analysis</h2>
-          <PlayerValueTable playerValues={playerValues} />
+          <TeamPlayerList playerValues={playerValues} />
         </div>
       </div>
     </div>

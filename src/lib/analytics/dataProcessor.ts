@@ -5,8 +5,7 @@ import {
   SleeperPlayer, 
   SleeperMatchup,
   Team,
-  PlayerValue,
-  PowerRanking
+  PlayerValue
 } from '@/types';
 import { FantasyAnalytics } from './calculations';
 import { 
@@ -50,36 +49,17 @@ export class DataProcessor {
       const selfInflictedLosses = this.calculateSelfInflictedLosses(roster.roster_id, teamMatchups, players, projections);
       const potentialWins = this.calculatePotentialWins(roster.roster_id, teamMatchups, players);
       
-      // Calculate power ranking components
-      const totalPoints = actualPoints;
-      const optimalAverage = this.calculateOptimalLineupAverage(roster, players, matchups);
-      const recent3Week = this.calculateRecentForm(roster.roster_id, matchups, 3);
-      
-      const powerRankValue = FantasyAnalytics.calculatePowerRanking(
-        totalPoints,
-        optimalAverage,
-        recent3Week
-      );
-
       teams.push({
         id: roster.roster_id,
         owner: user.display_name,
         wins,
         losses,
         sleeperRank: 0, // Will be calculated after sorting
-        powerRank: 0,   // Will be calculated after sorting
-        powerRankValue: powerRankValue,
         actualPoints,
         opponentPoints,
         selfInflictedLosses,
         potentialWins
       });
-    });
-
-    // Sort by power rank value and assign ranks
-    teams.sort((a, b) => b.powerRankValue - a.powerRankValue);
-    teams.forEach((team, index) => {
-      team.powerRank = index + 1;
     });
 
     // Sort by wins and assign Sleeper ranks
@@ -92,7 +72,7 @@ export class DataProcessor {
   }
 
   /**
-   * Process raw player data into PlayerValue objects with VORP, VORS, VOBP
+   * Process raw player data into PlayerValue objects with VORP, VOBP
    */
   static processPlayerValues(
     rosters: SleeperRoster[],
@@ -131,10 +111,6 @@ export class DataProcessor {
         // we'll set points to 0 for now
         const points = this.getPlayerPoints(playerId, stats) || 0;
         
-        // Calculate VORS using baseline starter points
-        const baselineStarterPoints = FantasyAnalytics.getBaselineStarterPoints(position);
-        const vors = FantasyAnalytics.calculateVORS(points, baselineStarterPoints);
-        
         // Calculate VORP using actual stats if available
         const vorp = this.calculateVORP(playerId, position, points, stats);
         
@@ -149,7 +125,6 @@ export class DataProcessor {
           points,
           rank: 0, // Will be calculated after sorting
           vorp,
-          vors,
           vobp
         });
       });

@@ -89,8 +89,6 @@ export interface Team {
   wins: number;
   losses: number;
   sleeperRank: number;
-  powerRank: number;
-  powerRankValue: number;
   actualPoints: number;
   opponentPoints: number;
   selfInflictedLosses: number;
@@ -105,7 +103,6 @@ export interface PlayerValue {
   points: number;
   rank: number;
   vorp: number;
-  vors: number;
   vobp: number;
 }
 
@@ -115,12 +112,4 @@ export interface LineupAnalysis {
   optimalPoints: number;
   pointsLeftOnBench: number;
   week: number;
-}
-
-export interface PowerRanking {
-  teamId: string;
-  totalPoints: number;
-  optimalLineupStrength: number;
-  recentForm: number;
-  compositeScore: number;
 }
