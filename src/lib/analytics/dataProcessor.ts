@@ -1,18 +1,20 @@
-import { 
-  SleeperLeague, 
-  SleeperRoster, 
-  SleeperUser, 
-  SleeperPlayer, 
+import {
+  SleeperLeague,
+  SleeperRoster,
+  SleeperUser,
+  SleeperPlayer,
   SleeperMatchup,
   Team,
-  PlayerValue
+  PlayerValue,
+  WeeklyLineup
 } from '@/types';
 import { FantasyAnalytics } from './calculations';
-import { 
-  filterMatchupsForRoster, 
-  getTeamPointsFromMatchup, 
+import {
+  filterMatchupsForRoster,
+  getTeamPointsFromMatchup,
   getOpponentPointsFromMatchup,
-  isRosterInMatchup 
+  isRosterInMatchup,
+  normalizeRosterId
 } from '@/lib/utils/rosterUtils';
 
 export class DataProcessor {
@@ -59,11 +61,10 @@ export class DataProcessor {
       const opponentPoints = this.calculateOpponentPoints(roster.roster_id, teamMatchups, roster.settings, matchups ? matchups.flat() : []);
       
       console.log(`[DEBUG] Team ${user.display_name}: ${wins}-${losses}, ${actualPoints.toFixed(2)} pts, opponent: ${opponentPoints.toFixed(2)} pts`);
-      
-      // Calculate advanced metrics
-      const selfInflictedLosses = this.calculateSelfInflictedLosses(roster.roster_id, teamMatchups, players, projections);
-      const potentialWins = this.calculatePotentialWins(roster.roster_id, teamMatchups, players);
-      
+
+      // Calculate advanced metrics - pass weekly matchups instead of flattened
+      const { selfInflictedLosses, unavoidableLosses, weeklyLineups } = this.calculateWeeklyLineupAnalysis(roster, rosters, users, players, matchups || []);
+
       teams.push({
         id: roster.roster_id,
         owner: user.display_name,
@@ -73,7 +74,8 @@ export class DataProcessor {
         actualPoints,
         opponentPoints,
         selfInflictedLosses,
-        potentialWins
+        unavoidableLosses,
+        weeklyLineups
       });
     });
 
@@ -203,7 +205,7 @@ export class DataProcessor {
   }
 
   /**
-   * Calculate optimal lineup for a specific week
+   * Calculate optimal lineup for a specific week using actual player points from that week
    */
   private static calculateOptimalLineupForWeek(
     roster: SleeperRoster,
@@ -214,10 +216,10 @@ export class DataProcessor {
     // For now, using a simplified calculation based on season totals
     const positionLimits = { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, FLEX: 1 };
     const availablePlayers = roster.players.map(id => players[id]).filter(Boolean);
-    
+
     // Sort players by position and points
     const sortedPlayers = availablePlayers.sort((a, b) => (b.points || 0) - (a.points || 0));
-    
+
     let optimalPoints = 0;
     let usedPositions: Record<string, number> = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, FLEX: 0 };
 
@@ -233,6 +235,85 @@ export class DataProcessor {
     });
 
     return optimalPoints;
+  }
+
+  /**
+   * Calculate optimal lineup score using actual player points from a specific matchup
+   */
+  private static calculateOptimalLineupFromMatchup(
+    roster: SleeperRoster,
+    matchup: SleeperMatchup,
+    players: Record<string, SleeperPlayer>
+  ): number {
+    // Standard roster positions: QB, RB, RB, WR, WR, TE, FLEX, K, DEF
+    const positionLimits = { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DEF: 1, FLEX: 1 };
+
+    // Get all rostered players with their points from this week
+    const playersWithPoints = roster.players
+      .map(playerId => {
+        const player = players[playerId];
+        const weekPoints = matchup.players_points?.[playerId] || 0;
+        return {
+          id: playerId,
+          position: player?.position || 'UNK',
+          points: weekPoints
+        };
+      })
+      .filter(p => p.position !== 'UNK');
+
+    // Group players by position and sort by points (descending)
+    const playersByPosition: Record<string, typeof playersWithPoints> = {};
+    playersWithPoints.forEach(p => {
+      if (!playersByPosition[p.position]) {
+        playersByPosition[p.position] = [];
+      }
+      playersByPosition[p.position].push(p);
+    });
+
+    // Sort each position group by points
+    Object.keys(playersByPosition).forEach(pos => {
+      playersByPosition[pos].sort((a, b) => b.points - a.points);
+    });
+
+    let optimalPoints = 0;
+    const usedPlayers = new Set<string>();
+
+    // Fill required positions first
+    Object.entries(positionLimits).forEach(([position, limit]) => {
+      if (position === 'FLEX') return; // Handle FLEX separately
+
+      const positionPlayers = playersByPosition[position] || [];
+      for (let i = 0; i < Math.min(limit, positionPlayers.length); i++) {
+        const player = positionPlayers[i];
+        optimalPoints += player.points;
+        usedPlayers.add(player.id);
+      }
+    });
+
+    // Fill FLEX with best remaining RB/WR/TE
+    const flexEligible = ['RB', 'WR', 'TE'];
+    const remainingFlexPlayers = flexEligible
+      .flatMap(pos => playersByPosition[pos] || [])
+      .filter(p => !usedPlayers.has(p.id))
+      .sort((a, b) => b.points - a.points);
+
+    if (remainingFlexPlayers.length > 0) {
+      optimalPoints += remainingFlexPlayers[0].points;
+    }
+
+    return optimalPoints;
+  }
+
+  /**
+   * Get all team scores for a specific week
+   */
+  private static getAllTeamScoresForWeek(
+    weekMatchups: SleeperMatchup[]
+  ): Array<{ rosterId: string, score: number }> {
+    return weekMatchups.map(matchup => ({
+      rosterId: normalizeRosterId(matchup.roster_id),
+      score: matchup.points
+    }));
   }
 
   /**
@@ -267,68 +348,82 @@ export class DataProcessor {
   }
 
   /**
-   * Calculate self-inflicted losses using projections vs actual
+   * Calculate weekly lineup analysis including self-inflicted losses and unavoidable losses
+   * Returns both the total counts and detailed weekly data
    */
-  private static calculateSelfInflictedLosses(
-    rosterId: string, 
-    matchups: SleeperMatchup[], 
+  private static calculateWeeklyLineupAnalysis(
+    roster: SleeperRoster,
+    rosters: SleeperRoster[],
+    users: SleeperUser[],
     players: Record<string, SleeperPlayer>,
-    projections?: Record<string, any>
-  ): number {
-    // Safety check: if no matchups or no projections, return 0
-    if (!matchups || matchups.length === 0 || !projections) {
-      return 0;
+    weeklyMatchups: SleeperMatchup[][] // Array of matchups per week
+  ): { selfInflictedLosses: number; unavoidableLosses: number; weeklyLineups: WeeklyLineup[] } {
+    if (!weeklyMatchups || weeklyMatchups.length === 0) {
+      return { selfInflictedLosses: 0, unavoidableLosses: 0, weeklyLineups: [] };
     }
 
     let selfInflictedLosses = 0;
+    let unavoidableLosses = 0;
+    const weeklyLineups: WeeklyLineup[] = [];
 
-    matchups.forEach(matchup => {
-      if (isRosterInMatchup(matchup, rosterId)) {
-        const teamPoints = getTeamPointsFromMatchup(matchup, rosterId);
-        const opponentPoints = 0; // TODO: Implement opponent points calculation for potential wins
-        
-        // Calculate projected points for this team
-        const projectedPoints = this.calculateProjectedPoints(rosterId, matchup, projections);
-        
-        if (projectedPoints > opponentPoints && teamPoints < opponentPoints) {
-          selfInflictedLosses++;
-        }
+    // Process each week's matchups
+    weeklyMatchups.forEach((weekMatchups, weekIndex) => {
+      // Find this team's matchup for the week
+      const teamMatchup = weekMatchups.find(m =>
+        isRosterInMatchup(m, roster.roster_id)
+      );
+
+      if (!teamMatchup) {
+        console.log(`[DEBUG] No matchup found for roster ${roster.roster_id} in week ${weekIndex + 1}`);
+        return;
       }
+
+      const actualPoints = teamMatchup.points;
+
+      // Find opponent matchup to get their roster_id and points
+      const opponentMatchup = weekMatchups.find(m =>
+        normalizeRosterId(m.matchup_id) === normalizeRosterId(teamMatchup.matchup_id) &&
+        normalizeRosterId(m.roster_id) !== normalizeRosterId(roster.roster_id)
+      );
+
+      const opponentPoints = opponentMatchup ? opponentMatchup.points : 0;
+      const opponentRosterId = opponentMatchup ? opponentMatchup.roster_id : '';
+
+      // Find opponent's roster and user to get their display name
+      const opponentRoster = rosters.find(r => normalizeRosterId(r.roster_id) === normalizeRosterId(opponentRosterId));
+      const opponentUser = opponentRoster ? users.find(u => u.user_id === opponentRoster.owner_id) : null;
+      const opponentName = opponentUser ? opponentUser.display_name : 'Unknown';
+
+      const optimalPoints = this.calculateOptimalLineupFromMatchup(roster, teamMatchup, players);
+      const pointsLeftOnBench = optimalPoints - actualPoints;
+      const isLoss = actualPoints < opponentPoints;
+      const isSelfInflicted = isLoss && optimalPoints > opponentPoints;
+      const isUnavoidableLoss = isLoss && optimalPoints <= opponentPoints;
+
+      if (isSelfInflicted) {
+        selfInflictedLosses++;
+        console.log(`[DEBUG] Self-inflicted loss found for roster ${roster.roster_id} week ${weekIndex + 1}: actual ${actualPoints.toFixed(2)}, optimal ${optimalPoints.toFixed(2)}, opponent ${opponentPoints.toFixed(2)}`);
+      }
+
+      if (isUnavoidableLoss) {
+        unavoidableLosses++;
+        console.log(`[DEBUG] Unavoidable loss found for roster ${roster.roster_id} week ${weekIndex + 1}: actual ${actualPoints.toFixed(2)}, optimal ${optimalPoints.toFixed(2)}, opponent ${opponentPoints.toFixed(2)}`);
+      }
+
+      weeklyLineups.push({
+        week: weekIndex + 1,
+        actualPoints,
+        optimalPoints,
+        opponentPoints,
+        opponentName,
+        pointsLeftOnBench,
+        isLoss,
+        isSelfInflicted,
+        isUnavoidableLoss
+      });
     });
 
-    return selfInflictedLosses;
-  }
-
-  /**
-   * Calculate potential wins using optimal vs actual lineups
-   */
-  private static calculatePotentialWins(
-    rosterId: string, 
-    matchups: SleeperMatchup[], 
-    players: Record<string, SleeperPlayer>
-  ): number {
-    // Safety check: if no matchups, return 0
-    if (!matchups || matchups.length === 0) {
-      return 0;
-    }
-
-    let potentialWins = 0;
-
-    matchups.forEach(matchup => {
-      if (isRosterInMatchup(matchup, rosterId)) {
-        const teamPoints = getTeamPointsFromMatchup(matchup, rosterId);
-        const opponentPoints = 0; // TODO: Implement opponent points calculation for potential wins
-        
-        // Calculate optimal lineup points for this team
-        const optimalPoints = this.calculateOptimalPointsForMatchup(rosterId, matchup, players);
-        
-        if (optimalPoints > opponentPoints && teamPoints < opponentPoints) {
-          potentialWins++;
-        }
-      }
-    });
-
-    return potentialWins;
+    return { selfInflictedLosses, unavoidableLosses, weeklyLineups };
   }
 
   /**
@@ -410,32 +505,6 @@ export class DataProcessor {
       'K': 100
     };
     return positionAverages[position] || 0;
-  }
-
-  /**
-   * Calculate projected points for a matchup
-   */
-  private static calculateProjectedPoints(
-    rosterId: string,
-    matchup: SleeperMatchup,
-    projections: Record<string, any>
-  ): number {
-    // This would use actual projections data
-    // For now, returning a simplified calculation
-    return 100; // Placeholder
-  }
-
-  /**
-   * Calculate optimal points for a matchup
-   */
-  private static calculateOptimalPointsForMatchup(
-    rosterId: string,
-    matchup: SleeperMatchup,
-    players: Record<string, SleeperPlayer>
-  ): number {
-    // This would calculate the optimal lineup for this specific matchup
-    // For now, returning a simplified calculation
-    return 120; // Placeholder
   }
 
   private static calculateWins(rosterId: string, matchups: SleeperMatchup[], rosterSettings?: any): number {

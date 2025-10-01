@@ -85,6 +85,18 @@ export interface SleeperMatchup {
 }
 
 // Dashboard Types
+export interface WeeklyLineup {
+  week: number;
+  actualPoints: number;
+  optimalPoints: number;
+  opponentPoints: number;
+  opponentName: string;
+  pointsLeftOnBench: number;
+  isLoss: boolean;
+  isSelfInflicted: boolean;
+  isUnavoidableLoss: boolean; // Loss where even optimal lineup wouldn't have won
+}
+
 export interface Team {
   id: string;
   owner: string;
@@ -94,7 +106,8 @@ export interface Team {
   actualPoints: number;
   opponentPoints: number;
   selfInflictedLosses: number;
-  potentialWins: number;
+  unavoidableLosses: number; // Losses where even optimal lineup wouldn't have won
+  weeklyLineups: WeeklyLineup[];
 }
 
 export interface PlayerValue {

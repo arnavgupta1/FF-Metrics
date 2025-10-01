@@ -88,7 +88,7 @@ export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams 
                 Self Inflicted Losses
               </th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Potential Wins
+                Unavoidable Losses
               </th>
             </tr>
           </thead>
@@ -131,8 +131,8 @@ export const SeasonOverviewTable: React.FC<SeasonOverviewTableProps> = ({ teams 
                   </div>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-mono font-medium ${getValueColor(team.potentialWins)}`}>
-                    {team.potentialWins}
+                  <div className="text-sm font-mono text-gray-400">
+                    {team.unavoidableLosses}
                   </div>
                 </td>
               </tr>

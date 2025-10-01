@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Team, PlayerValue } from '@/types';
 import { SeasonOverviewTable } from './SeasonOverviewTable';
 import { TeamPlayerList } from './TeamPlayerList';
+import { WeeklyLineupComparison } from './WeeklyLineupComparison';
 import { sleeperAPI } from '@/lib/sleeper/api';
 import { DataProcessor } from '@/lib/analytics/dataProcessor';
 
@@ -326,11 +327,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ leagueId }) => {
     <div className="min-h-screen bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-8">Fantasy Football Analytics Dashboard</h1>
-        
+
         {/* Season Overview Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-200 mb-4">Season Overview</h2>
           <SeasonOverviewTable teams={teams} />
+        </div>
+
+        {/* Weekly Lineup Comparison Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-200 mb-4">Weekly Lineup Analysis</h2>
+          <WeeklyLineupComparison teams={teams} />
         </div>
 
         {/* Player Value Analysis Section */}

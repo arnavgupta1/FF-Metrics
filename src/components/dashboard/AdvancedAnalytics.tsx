@@ -21,7 +21,7 @@ export const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ teams }) =
     <div className="space-y-6">
 
       {/* Advanced Metrics Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         {/* Self-Inflicted Losses */}
         <div className="bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-700">
           <h3 className="text-lg font-medium text-white mb-4">Self-Inflicted Losses</h3>
@@ -40,29 +40,6 @@ export const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ teams }) =
             {teams.filter(team => team.selfInflictedLosses === 0).length > 0 && (
               <div className="text-sm text-gray-400 text-center py-2">
                 {teams.filter(team => team.selfInflictedLosses === 0).length} teams with no self-inflicted losses
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Potential Wins */}
-        <div className="bg-gray-800 shadow-lg rounded-lg p-6 border border-gray-700">
-          <h3 className="text-lg font-medium text-white mb-4">Potential Wins</h3>
-          <div className="space-y-3">
-            {teams
-              .filter(team => team.potentialWins > 0)
-              .sort((a, b) => b.potentialWins - a.potentialWins)
-              .map(team => (
-                <div key={team.id} className="flex justify-between items-center p-3 bg-green-900/30 rounded-lg border border-green-800/50">
-                  <span className="text-sm font-medium text-white">{team.owner}</span>
-                  <span className="text-sm font-mono font-bold text-green-300">
-                    {team.potentialWins} win{team.potentialWins !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              ))}
-            {teams.filter(team => team.potentialWins === 0).length > 0 && (
-              <div className="text-sm text-gray-400 text-center py-2">
-                {teams.filter(team => team.potentialWins === 0).length} teams with no potential wins
               </div>
             )}
           </div>
